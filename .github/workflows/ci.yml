@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check JSON syntax
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json; do
+            echo "Checking $f"
+            python3 -m json.tool "$f" > /dev/null
+          done
+
+      - name: Check shell script syntax
+        run: |
+          for f in .claude/scripts/*.sh; do
+            [ -e "$f" ] || continue
+            echo "Checking $f"
+            bash -n "$f"
+          done
+
+      - name: Check required files exist
+        run: |
+          for f in README.md LICENSE CONTRIBUTING.md CODE_OF_CONDUCT.md; do
+            if [ ! -f "$f" ]; then
+              echo "Missing required file: $f"
+              exit 1
+            fi
+            echo "Found $f"
+          done
+
+      - name: Check plugin files exist
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json .claude-plugin/README.md; do
+            if [ ! -f "$f" ]; then
+              echo "Missing plugin file: $f"
+              exit 1
+            fi
+            echo "Found $f"
+          done
+
+      - name: Check skills structure
+        run: |
+          for skill in skills/*/; do
+            [ -d "$skill" ] || continue
+            name=$(basename "$skill")
+            [ "$name" = "_shared" ] && continue
+            if [ ! -f "$skill/SKILL.md" ]; then
+              echo "Missing SKILL.md in $skill"
+              exit 1
+            fi
+            echo "Valid skill: $name"
+          done

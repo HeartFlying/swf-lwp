@@ -55,33 +55,21 @@
 
 ## 当前任务与中断进度
 
-**任务：** 测试远程安装插件到 Claude Code  
+**任务：** 补充根目录 README.md 文档  
 **状态：** ✅ 已完成  
 **完成度：100%**
 
 ### 已完成
 
-1. ✅ 插件结构验证：`claude plugin validate` 通过
-2. ✅ 添加 Marketplace：`claude plugin marketplace add` 成功添加 `swf`
-3. ✅ 安装插件：`claude plugin install swf` 成功安装 `swf@swf`
-4. ✅ 状态确认：`Status: ✔ enabled`，22 Skills 全部加载
+1. ✅ 创建根目录 `README.md`（114 行），包含项目概述、仓库结构、安装方式、Skills 清单、使用示例、CI 状态
+2. ✅ 提交至 `test-plugin` 分支：`ea774c8 docs: add root README.md with project overview and structure`
+3. ✅ 推送至 GitHub：`test-plugin -> origin/test-plugin`
 
 ### 验证结果
 
-- 插件版本：1.0.0
-- 安装范围：user
-- 组件清单：22 Skills（feature-detailed-design, g100~g103, g200~g204, g300~g401, gs-quality-check, gs-review, layered-parallel-implementation, prd-design-readiness-review, progress-recorder, reviewing-software-design, software-fmea-review）
-- Token 开销：Always-on ~962 tok
-
-### 注意事项
-
-当前环境因网络限制无法直接从 GitHub URL 添加 marketplace（连接超时）。测试使用本地路径验证，插件结构完全正确。在可访问 GitHub 的环境中，执行以下命令即可完成真正的远程安装：
-
-```bash
-claude plugin marketplace add https://github.com/HeartFlying/swf-lwp
-claude plugin install swf
-```
+- GitHub 仓库已显示根目录 README：https://github.com/HeartFlying/swf-lwp/blob/test-plugin/README.md
+- 内容涵盖：项目概述、三阶段覆盖（需求/架构/详细设计）、仓库结构图、两种安装方式、22 Skills 完整清单、使用示例、CI 说明
 
 ### 无剩余缺口
 
-插件安装测试通过，下一任务由用户指定。
+根目录 README 已补充完毕。下一任务由用户指定。

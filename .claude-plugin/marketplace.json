@@ -1,0 +1,38 @@
+{
+  "name": "swf",
+  "owner": {
+    "name": "hxie"
+  },
+  "metadata": {
+    "description": "实现产品研发阶段的需求分析、概要设计和详细设计"
+  },
+  "plugins": [
+    {
+      "name": "swf",
+      "source": "./",
+      "description": "实现产品研发阶段的需求分析、概要设计和详细设计",
+      "version": "1.0.0",
+      "author": {
+        "name": "hxie"
+      },
+      "license": "MIT",
+      "keywords": [
+        "software-design",
+        "requirements",
+        "architecture",
+        "detailed-design",
+        "workflow",
+        "engineering"
+      ],
+      "category": "workflow",
+      "tags": [
+        "software-design",
+        "requirements",
+        "architecture",
+        "detailed-design",
+        "workflow"
+      ],
+      "strict": false
+    }
+  ]
+}

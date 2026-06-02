@@ -1,0 +1,5 @@
+interface:
+  display_name: "PRD设计准入评审"
+  short_description: "量化评审PRD是否具备进入系统设计阶段条件"
+  default_prompt: "使用 $prd-design-readiness-review 评审这份PRD，并输出结构化准入Gate结果。"
+

@@ -1,0 +1,69 @@
+{
+  "skill_name": "layered-parallel-implementation",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我们已经完成了一个物联网数据处理系统的详细设计，有6个核心组件。团队有5个全栈工程师，现在想知道怎么开始编码实现。请帮我制定一个实施计划。",
+      "expected_output": "应该调用分层并行实施设计流程，先询问团队配置和约束，然后提出分层并行策略",
+      "assertions": [
+        {
+          "id": "a1-asks-team-config",
+          "description": "询问团队配置（多选题形式）",
+          "check": "是否用多选题询问团队技能栈"
+        },
+        {
+          "id": "a2-presents-strategies",
+          "description": "提出2-3种实施策略",
+          "check": "是否呈现分层并行、场景驱动、基础设施优先三种策略"
+        },
+        {
+          "id": "a3-layer-decomposition",
+          "description": "按技术边界拆分层次",
+          "check": "是否将系统按技术栈边界拆分为独立层"
+        },
+        {
+          "id": "a4-interface-contracts",
+          "description": "定义层间接口契约",
+          "check": "是否定义接口五要素（协议/数据/质量/生命周期/错误）"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "设计文档都写完了，请问如何开始软件开发？",
+      "expected_output": "触发分层并行实施设计，确认前提后提出策略选择",
+      "assertions": [
+        {
+          "id": "b1-confirms-prerequisites",
+          "description": "确认设计资产完整性",
+          "check": "是否询问设计文档和团队配置"
+        },
+        {
+          "id": "b2-six-phase-flow",
+          "description": "执行六阶段流程",
+          "check": "是否按六阶段SOP执行（前提→策略→分层→排期→协调→固化）"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "帮我写个登录页面的代码",
+      "expected_output": "不应该触发本skill，这是单一功能开发而不是分层实施设计",
+      "assertions": [
+        {
+          "id": "c1-no-trigger",
+          "description": "不触发分层实施设计",
+          "check": "是否识别为单一功能开发，不启动分层SOP"
+        },
+        {
+          "id": "c2-direct-response",
+          "description": "直接响应代码请求",
+          "check": "是否直接提供登录页面代码或代码框架"
+        }
+      ],
+      "files": []
+    }
+  ]
+}

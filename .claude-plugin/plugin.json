@@ -1,0 +1,24 @@
+{
+  "name": "swf",
+  "version": "1.0.0",
+  "description": "实现产品研发阶段的需求分析、概要设计和详细设计",
+  "author": {
+    "name": "hxie"
+  },
+  "license": "MIT",
+  "keywords": [
+    "software-design",
+    "requirements",
+    "architecture",
+    "detailed-design",
+    "workflow",
+    "engineering"
+  ],
+  "mcpServers": {},
+  "skills": [
+    "./skills/"
+  ],
+  "commands": [
+    "./commands/"
+  ]
+}

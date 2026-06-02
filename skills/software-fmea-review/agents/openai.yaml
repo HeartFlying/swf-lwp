@@ -1,0 +1,4 @@
+interface:
+  display_name: "软件研发 FMEA 评审"
+  short_description: "对软件需求、设计和上线方案执行 FMEA 风险评审"
+  default_prompt: "请使用 $software-fmea-review 对以下软件研发内容执行FMEA风险评审，并保存完整Markdown报告："

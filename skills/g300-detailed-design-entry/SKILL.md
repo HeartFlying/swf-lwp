@@ -201,9 +201,9 @@ argument-hint: [user-request]
 
 建立 SCP-MVP-FR 三联映射表，作为阶段内统一功能范围基准：
 
-| SCP-ID | MVP-ID | FR-ID | 功能描述（以 P3 为准） | 优先级 | 组件覆盖 |
-|---|---|---|---|---|---|
-| SCP-001 | MVP-001 | FR-001 | （从 004-mvp-definition.md 提取） | Must | CMP-XXX |
+| SCP-ID | MVP-ID | FR-ID | 功能描述（以 P3 为准） | 优先级 | 组件覆盖 | has_frontend_ui | uiux_ref |
+|---|---|---|---|---|---|---|---|
+| SCP-001 | MVP-001 | FR-001 | （从 004-mvp-definition.md 提取） | Must | CMP-XXX | yes / no | |
 | ... | ... | ... | ... | ... | ... |
 
 **收敛规则**：
@@ -211,6 +211,7 @@ argument-hint: [user-request]
 2. FR-ID 仅作为追溯字段，阶段内引用统一使用 MVP-ID
 3. 优先级必须与 P3 保持一致
 4. 组件覆盖从 P2 (蓝图 3.1 章) 提取
+5. `has_frontend_ui` 和 `uiux_ref` 优先从 P2 (蓝图 3.1 章) 提取；若 P2 缺失，依据 P3 功能描述推断并标注 `working_assumptions`
 
 #### 1.3 一致性校验门（强制阻断）
 

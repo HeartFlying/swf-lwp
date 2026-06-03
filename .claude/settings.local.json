@@ -4,7 +4,6 @@
       "*"
     ]
   },
-  "enabledPlugins": {},
   "defaultMode": "bypassPermissions",
   "dangerouslySkipPermissions": true
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fresh Subagent Orchestrator"
+  short_description: "Spec-traced DAG execution agents"
+  default_prompt: "Use $orchestrating-fresh-subagents to map these spec files and this plan into a DAG, then execute it with fresh agents for test, development, and self-check."

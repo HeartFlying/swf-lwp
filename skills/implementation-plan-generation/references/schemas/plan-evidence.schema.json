@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Plan Generation Evidence",
+  "description": "计划生成完成后的结构化证据输出，供下游技能（infrastructure-bootstrapping、layered-parallel-implementation）直接消费。",
+  "type": "object",
+  "required": ["plan_id", "generated_at", "components", "subplans", "traceability_coverage", "gap_summary", "checkpoints"],
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "description": "主计划标识，格式: <date>-master-plan"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "计划生成时间戳（ISO 8601）"
+    },
+    "components": {
+      "type": "array",
+      "description": "组件清单（含置信度标注）",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "confidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "tech_stack": { "type": "string" },
+          "execution_group": { "type": "string" },
+          "dependencies": { "type": "array", "items": { "type": "string" } },
+          "linked_requirements": { "type": "array", "items": { "type": "string" } },
+          "linked_designs": { "type": "array", "items": { "type": "string" } },
+          "owner": { "type": "string" },
+          "confidence": {
+            "type": "string",
+            "enum": ["已确认", "已推导", "待确认"]
+          }
+        }
+      }
+    },
+    "subplans": {
+      "type": "array",
+      "description": "子计划清单",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "file_path", "prerequisites", "can_parallelize", "recommended_engine"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["基础设施", "功能实现", "集成联调", "补齐修复"] },
+          "file_path": { "type": "string" },
+          "covered_components": { "type": "array", "items": { "type": "string" } },
+          "prerequisites": { "type": "array", "items": { "type": "string" } },
+          "can_parallelize": { "type": "boolean" },
+          "parallelize_with": { "type": "array", "items": { "type": "string" } },
+          "recommended_engine": { "type": "string" }
+        }
+      }
+    },
+    "traceability_coverage": {
+      "type": "object",
+      "description": "追溯链覆盖率统计",
+      "required": ["total_tasks", "tasks_with_traceability", "coverage_pct", "orphan_requirements"],
+      "properties": {
+        "total_tasks": { "type": "integer" },
+        "tasks_with_traceability": { "type": "integer" },
+        "coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "orphan_requirements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "未在任何追溯链中出现过的需求 ID"
+        }
+      }
+    },
+    "gap_summary": {
+      "type": "object",
+      "description": "缺口汇总（证据缺口暴露）",
+      "required": ["unconfirmed_ratio", "derived_dep_ratio", "default_criteria_ratio", "block_status"],
+      "properties": {
+        "unconfirmed_ratio": {
+          "type": "number",
+          "description": "组件'待确认'占比",
+          "minimum": 0, "maximum": 100
+        },
+        "derived_dep_ratio": {
+          "type": "number",
+          "description": "依赖'已推导'占比",
+          "minimum": 0, "maximum": 100
+        },
+        "default_criteria_ratio": {
+          "type": "number",
+          "description": "验收标准'默认'占比",
+          "minimum": 0, "maximum": 100
+        },
+        "block_status": {
+          "type": "string",
+          "enum": ["通过", "警告", "阻断"],
+          "description": "阻断：unconfirmed_ratio > 50%；警告：> 30%"
+        }
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "description": "检查点配置（预埋）",
+      "items": {
+        "type": "object",
+        "required": ["id", "trigger", "dimensions", "threshold", "evidence_file"],
+        "properties": {
+          "id": { "type": "string" },
+          "trigger": { "type": "string", "description": "触发条件描述" },
+          "dimensions": { "type": "array", "items": { "type": "string" } },
+          "threshold": { "type": "string" },
+          "evidence_file": {
+            "type": "string",
+            "description": "检查点通过后应生成的证据文件路径",
+            "examples": ["docs/exec-plans/checkpoints/cp-1-report.json"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "passed", "failed", "skipped"]
+          }
+        }
+      }
+    }
+  }
+}

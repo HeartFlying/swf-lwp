@@ -3,15 +3,316 @@
 ## 目录
 
 1. [后端代码骨架](#后端代码骨架)
+   - [Go](#go)
    - [FastAPI (Python)](#fastapi-python)
    - [Spring Boot (Java)](#spring-boot-java)
-2. [前端代码骨架](#前端代码骨架)
+2. [算法侧代码骨架](#算法侧代码骨架)
+   - [C++17](#c17)
+3. [前端代码骨架](#前端代码骨架)
    - [Vue3 + TypeScript](#vue3--typescript)
-3. [代码规范说明](#代码规范说明)
+4. [代码规范说明](#代码规范说明)
 
 ---
 
 ## 后端代码骨架
+
+### Go
+
+#### 目录结构
+
+```
+{feature}/
+├── handler/
+│   └── {entity}_handler.go    # HTTP Handler
+├── service/
+│   └── {entity}_service.go    # 业务逻辑层
+├── repository/
+│   └── {entity}_repo.go       # 数据访问层
+├── model/
+│   └── {entity}.go            # 领域模型 + DTO
+└── router/
+    └── router.go              # 路由注册
+```
+
+#### model/{entity}.go
+
+```go
+package model
+
+import "time"
+
+// {Entity} 领域实体
+type {Entity} struct {
+	ID        int64      `json:"id"         db:"id"`
+	Name      string     `json:"name"       db:"name"`
+	Code      *string    `json:"code"       db:"code"`
+	Status    string     `json:"status"     db:"status"`
+	Metadata  []byte     `json:"metadata"   db:"metadata"`
+	CreatedAt time.Time  `json:"createdAt"  db:"created_at"`
+	UpdatedAt time.Time  `json:"updatedAt"  db:"updated_at"`
+	DeletedAt *time.Time `json:"-"          db:"deleted_at"`
+}
+
+// Create{Entity}Request 创建请求
+type Create{Entity}Request struct {
+	Name    string  `json:"name"    validate:"required,max=255"`
+	Code    *string `json:"code"    validate:"omitempty,max=64"`
+	Status  string  `json:"status"`
+}
+
+// Update{Entity}Request 更新请求
+type Update{Entity}Request struct {
+	Name   *string `json:"name"    validate:"omitempty,max=255"`
+	Status *string `json:"status"`
+}
+
+// {Entity}ListResponse 列表响应
+type {Entity}ListResponse struct {
+	Items    []{Entity} `json:"items"`
+	Total    int64      `json:"total"`
+	Page     int        `json:"page"`
+	PageSize int        `json:"pageSize"`
+}
+```
+
+#### repository/{entity}_repo.go
+
+```go
+package repository
+
+import (
+	"context"
+	"database/sql"
+
+	"{module}/internal/model"
+)
+
+// {Entity}Repository 数据访问层
+type {Entity}Repository struct {
+	db *sql.DB
+}
+
+func New{Entity}Repository(db *sql.DB) *{Entity}Repository {
+	return &{Entity}Repository{db: db}
+}
+
+// Create 插入记录
+func (r *{Entity}Repository) Create(ctx context.Context, m *model.{Entity}) error {
+	const query = `
+		INSERT INTO {entity}s (name, code, status, metadata)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at, updated_at`
+	return r.db.QueryRowContext(ctx, query,
+		m.Name, m.Code, m.Status, m.Metadata,
+	).Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
+}
+
+// GetByID 按主键查询
+func (r *{Entity}Repository) GetByID(ctx context.Context, id int64) (*model.{Entity}, error) {
+	const query = `
+		SELECT id, name, code, status, metadata, created_at, updated_at
+		FROM {entity}s
+		WHERE id = $1 AND deleted_at IS NULL`
+	m := &model.{Entity}{}
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&m.ID, &m.Name, &m.Code, &m.Status, &m.Metadata,
+		&m.CreatedAt, &m.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// List 分页查询
+func (r *{Entity}Repository) List(ctx context.Context, params model.ListParams) (*model.{Entity}ListResponse, error) {
+	// 构建动态查询；实际实现中应使用查询构造器
+	const countQuery = `SELECT COUNT(*) FROM {entity}s WHERE deleted_at IS NULL`
+	const dataQuery = `
+		SELECT id, name, code, status, metadata, created_at, updated_at
+		FROM {entity}s
+		WHERE deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2`
+
+	var total int64
+	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&total); err != nil {
+		return nil, err
+	}
+
+	rows, err := r.db.QueryContext(ctx, dataQuery, params.PageSize, (params.Page-1)*params.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []model.{Entity}
+	for rows.Next() {
+		var m model.{Entity}
+		if err := rows.Scan(&m.ID, &m.Name, &m.Code, &m.Status, &m.Metadata, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, m)
+	}
+
+	return &model.{Entity}ListResponse{
+		Items:    items,
+		Total:    total,
+		Page:     params.Page,
+		PageSize: params.PageSize,
+	}, nil
+}
+```
+
+#### service/{entity}_service.go
+
+```go
+package service
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"{module}/internal/model"
+	"{module}/internal/repository"
+)
+
+// 领域错误定义
+var (
+	Err{Entity}NotFound  = errors.New("实体不存在")
+	Err{Entity}CodeDup   = errors.New("编码已存在")
+)
+
+// {Entity}Service 业务逻辑层
+type {Entity}Service struct {
+	repo *repository.{Entity}Repository
+}
+
+func New{Entity}Service(repo *repository.{Entity}Repository) *{Entity}Service {
+	return &{Entity}Service{repo: repo}
+}
+
+// Create 创建实体
+// 消费上游组件设计中的 [状态机锚点: {Entity}StateMachine.initial]
+func (s *{Entity}Service) Create(ctx context.Context, req model.Create{Entity}Request) (*model.{Entity}, error) {
+	m := &model.{Entity}{
+		Name:   req.Name,
+		Code:   req.Code,
+		Status: "active",
+	}
+	if err := s.repo.Create(ctx, m); err != nil {
+		return nil, fmt.Errorf("创建{实体}失败: %w", err)
+	}
+	return m, nil
+}
+
+// GetByID 按ID查询
+func (s *{Entity}Service) GetByID(ctx context.Context, id int64) (*model.{Entity}, error) {
+	m, err := s.repo.GetByID(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, Err{Entity}NotFound
+	}
+	return m, err
+}
+
+// List 分页列表查询
+func (s *{Entity}Service) List(ctx context.Context, params model.ListParams) (*model.{Entity}ListResponse, error) {
+	return s.repo.List(ctx, params)
+}
+
+// Update 更新实体
+// 消费上游组件设计中的 [状态机锚点: {Entity}StateMachine.transition]
+func (s *{Entity}Service) Update(ctx context.Context, id int64, req model.Update{Entity}Request) (*model.{Entity}, error) {
+	// 算法锚点: 参考上游组件设计 [算法: {Entity}Validation]
+	m, err := s.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// 状态迁移校验 (上游状态机定义)
+	if req.Status != nil && !isValidTransition(m.Status, *req.Status) {
+		return nil, fmt.Errorf("非法状态迁移: %s -> %s", m.Status, *req.Status)
+	}
+	return m, nil
+}
+
+// Delete 软删除
+func (s *{Entity}Service) Delete(ctx context.Context, id int64) error {
+	// 异常处理锚点: 参考上游组件设计 [异常: {Entity}.Delete.NotFound]
+	return nil
+}
+```
+
+#### handler/{entity}_handler.go
+
+```go
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+
+	"{module}/internal/model"
+	"{module}/internal/service"
+)
+
+// {Entity}Handler HTTP 处理层
+type {Entity}Handler struct {
+	svc *service.{Entity}Service
+}
+
+func New{Entity}Handler(svc *service.{Entity}Service) *{Entity}Handler {
+	return &{Entity}Handler{svc: svc}
+}
+
+// HandleList GET /api/v1/{features}
+func (h *{Entity}Handler) HandleList(w http.ResponseWriter, r *http.Request) {
+	params := model.ListParams{
+		Page:     queryInt(r, "page", 1),
+		PageSize: queryInt(r, "pageSize", 20),
+	}
+	result, err := h.svc.List(r.Context(), params)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": result})
+}
+
+// HandleCreate POST /api/v1/{features}
+func (h *{Entity}Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+	var req model.Create{Entity}Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "请求格式错误")
+		return
+	}
+	result, err := h.svc.Create(r.Context(), req)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "CREATE_FAILED", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"data": result})
+}
+
+// HandleGetByID GET /api/v1/{features}/{id}
+func (h *{Entity}Handler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "无效ID")
+		return
+	}
+	result, err := h.svc.GetByID(r.Context(), id)
+	if errors.Is(err, service.Err{Entity}NotFound) {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": result})
+}
+```
+
+---
 
 ### FastAPI (Python)
 
@@ -459,6 +760,288 @@ public class {Entity}Service {
         entity.setDeletedAt(LocalDateTime.now());
     }
 }
+```
+
+---
+
+## 算法侧代码骨架
+
+### C++17
+
+#### 目录结构
+
+```
+algorithm/{feature}/
+├── CMakeLists.txt               # 构建配置
+├── include/
+│   └── {feature}/
+│       ├── {algorithm}.h        # 算法头文件
+│       └── types.h              # 数据类型定义
+├── src/
+│   └── {algorithm}.cpp          # 算法实现
+└── test/
+    └── {algorithm}_test.cpp     # 单元测试
+```
+
+#### CMakeLists.txt
+
+```cmake
+cmake_minimum_required(VERSION 3.16)
+project({feature}_algorithm VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# 依赖库
+find_package(OpenCV REQUIRED)
+find_package(spdlog REQUIRED)
+
+add_library({feature}_algorithm STATIC
+    src/{algorithm}.cpp
+)
+
+target_include_directories({feature}_algorithm PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries({feature}_algorithm PUBLIC
+    OpenCV::OpenCV
+    spdlog::spdlog
+)
+
+# 测试
+option(BUILD_TESTS "Build tests" ON)
+if(BUILD_TESTS)
+    enable_testing()
+    find_package(GTest REQUIRED)
+    add_executable({algorithm}_test test/{algorithm}_test.cpp)
+    target_link_libraries({algorithm}_test PRIVATE
+        {feature}_algorithm
+        GTest::GTest
+    )
+    add_test(NAME {algorithm}_test COMMAND {algorithm}_test)
+endif()
+```
+
+#### include/{feature}/types.h
+
+```cpp
+#pragma once
+
+#include <cstdint>
+#include <chrono>
+#include <optional>
+#include <string>
+#include <vector>
+
+namespace {feature} {
+
+// 状态枚举 — 对齐上游组件设计 [状态机: {Entity}StateMachine]
+enum class {Entity}State : uint8_t {
+    kInitialized = 0,   // 初始状态
+    kProcessing  = 1,   // 处理中
+    kCompleted   = 2,   // 已完成
+    kFailed      = 3,   // 失败
+};
+
+// 输入数据结构 — 对齐上游接口设计 [接口: {Interface}.Input]
+struct InputData {
+    std::string source_id;      // 数据源标识
+    std::vector<uint8_t> frame; // 帧数据
+    std::chrono::milliseconds timestamp;
+};
+
+// 输出数据结构 — 对齐上游接口设计 [接口: {Interface}.Output]
+struct OutputData {
+    std::string target_id;      // 目标标识
+    float confidence;           // 置信度 [0.0, 1.0]
+    {Entity}State state;        // 当前状态
+    std::string error_message;  // 错误信息（kFailed 时有效）
+};
+
+// 算法配置 — 对齐上游组件设计 [算法: {Algorithm}.Config]
+struct AlgorithmConfig {
+    float threshold = 0.75f;        // 判定阈值
+    size_t max_retries = 3;         // 最大重试次数
+    std::chrono::milliseconds timeout{5000}; // 超时时间
+};
+
+} // namespace {feature}
+```
+
+#### include/{feature}/{algorithm}.h
+
+```cpp
+#pragma once
+
+#include "{feature}/types.h"
+#include <optional>
+
+namespace {feature} {
+
+// {算法名称} — 对齐上游组件设计 [算法: {Algorithm}]
+//
+// 输入:  InputData  (帧数据 + 时间戳)
+// 输出:  OutputData (识别结果 + 置信度 + 状态)
+//
+// 复杂度约束: O(n log n), n = 帧像素数
+// 失败语义: 超时或置信度低于阈值时 state=kFailed
+class {Algorithm} {
+public:
+    explicit {Algorithm}(AlgorithmConfig config = {});
+
+    // 处理单帧数据
+    auto Process(const InputData& input) -> OutputData;
+
+    // 重置内部状态
+    void Reset();
+
+private:
+    // 核心算法实现 — 上游算法锚点
+    auto Compute(const std::vector<uint8_t>& frame) -> std::pair<float, std::string>;
+
+    // 状态迁移 — 上游状态机锚点
+    void Transition({Entity}State new_state);
+
+    AlgorithmConfig config_;
+    {Entity}State current_state_ = {Entity}State::kInitialized;
+};
+
+} // namespace {feature}
+```
+
+#### src/{algorithm}.cpp
+
+```cpp
+#include "{feature}/{algorithm}.h"
+#include <spdlog/spdlog.h>
+
+namespace {feature} {
+
+{Algorithm}::{Algorithm}(AlgorithmConfig config)
+    : config_(std::move(config)) {
+    spdlog::info("{Algorithm} 初始化, threshold={}", config_.threshold);
+}
+
+auto {Algorithm}::Process(const InputData& input) -> OutputData {
+    OutputData output{
+        .target_id = input.source_id,
+        .confidence = 0.0f,
+        .state = {Entity}State::kProcessing,
+    };
+
+    // 异常处理锚点: 参考上游 [异常: InputData.Validation]
+    if (input.frame.empty()) {
+        spdlog::warn("空帧输入, source_id={}", input.source_id);
+        output.state = {Entity}State::kFailed;
+        output.error_message = "空帧输入";
+        return output;
+    }
+
+    // 核心算法调用
+    auto [confidence, error] = Compute(input.frame);
+
+    if (!error.empty()) {
+        spdlog::error("算法计算失败: {}", error);
+        output.state = {Entity}State::kFailed;
+        output.error_message = error;
+        return output;
+    }
+
+    output.confidence = confidence;
+
+    // 状态迁移: 参考上游 [状态机: {Entity}StateMachine.transition]
+    if (confidence >= config_.threshold) {
+        Transition({Entity}State::kCompleted);
+    } else {
+        Transition({Entity}State::kFailed);
+        output.error_message = "置信度低于阈值";
+    }
+
+    output.state = current_state_;
+    return output;
+}
+
+auto {Algorithm}::Compute(const std::vector<uint8_t>& frame)
+    -> std::pair<float, std::string> {
+    // 算法实现锚点: 上游组件设计 [算法: {Algorithm}.Compute]
+    //
+    // 输入: 帧像素数据
+    // 输出: (置信度, 错误信息)
+    // 复杂度: O(n log n)
+
+    // TODO: 实现核心算法逻辑
+    float confidence = 0.0f;
+    // ... 算法处理逻辑 ...
+
+    return {confidence, ""};
+}
+
+void {Algorithm}::Transition({Entity}State new_state) {
+    // 状态机实现锚点: 上游组件设计 [状态机: {Entity}StateMachine]
+    //
+    // 合法迁移:
+    //   kInitialized -> kProcessing -> kCompleted
+    //                               -> kFailed
+    //   kFailed -> kInitialized (Reset后)
+    spdlog::debug("状态迁移: {} -> {}",
+        static_cast<int>(current_state_),
+        static_cast<int>(new_state));
+    current_state_ = new_state;
+}
+
+void {Algorithm}::Reset() {
+    current_state_ = {Entity}State::kInitialized;
+    spdlog::debug("{Algorithm} 已重置");
+}
+
+} // namespace {feature}
+```
+
+#### test/{algorithm}_test.cpp
+
+```cpp
+#include <gtest/gtest.h>
+#include "{feature}/{algorithm}.h"
+
+namespace {feature} {
+namespace {
+
+TEST({Algorithm}Test, EmptyInputReturnsFailed) {
+    {Algorithm} algo;
+    InputData input{.source_id = "test", .frame = {}};
+    auto output = algo.Process(input);
+    EXPECT_EQ(output.state, {Entity}State::kFailed);
+    EXPECT_FALSE(output.error_message.empty());
+}
+
+TEST({Algorithm}Test, ValidInputProducesConfidence) {
+    {Algorithm} algo({Algorithm}Config{.threshold = 0.5f});
+    InputData input{
+        .source_id = "test",
+        .frame = std::vector<uint8_t>(100, 0x80),
+        .timestamp = std::chrono::milliseconds(1000)
+    };
+    auto output = algo.Process(input);
+    // 正常输入应产生有效结果（具体断言依赖实际算法实现）
+    EXPECT_GE(output.confidence, 0.0f);
+    EXPECT_LE(output.confidence, 1.0f);
+}
+
+TEST({Algorithm}Test, ResetBringsBackToInitialized) {
+    {Algorithm} algo;
+    InputData input{.source_id = "test", .frame = {1, 2, 3}};
+    algo.Process(input);
+    algo.Reset();
+    // 验证 Reset 后状态回归
+    InputData input2{.source_id = "test2", .frame = {4, 5, 6}};
+    auto output = algo.Process(input2);
+    EXPECT_NE(output.state, {Entity}State::kInitialized); // 已重新处理
+}
+
+} // namespace
+} // namespace {feature}
 ```
 
 ---
